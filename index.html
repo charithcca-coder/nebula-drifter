@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nebula Drifter</title>
+<style>
+html,body{margin:0;overflow:hidden;background:black;font-family:Arial}
+#hud{position:absolute;top:10px;left:10px;color:white;z-index:10}
+#joystick{
+position:absolute;bottom:40px;left:40px;width:100px;height:100px;
+border-radius:50%;background:rgba(255,255,255,.15)
+}
+#stick{
+position:absolute;left:30px;top:30px;width:40px;height:40px;
+border-radius:50%;background:white
+}
+#hookBtn{
+position:absolute;bottom:50px;right:40px;width:70px;height:70px;
+border-radius:50%;background:rgba(0,200,255,.7);color:white;
+display:flex;align-items:center;justify-content:center;font-weight:bold
+}
+</style>
+</head>
+
+<body>
+<div id="hud">🌌 Nebula Drifter</div>
+<div id="joystick"><div id="stick"></div></div>
+<div id="hookBtn">HOOK</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+
+<script>
+let scene=new THREE.Scene()
+scene.background=new THREE.Color(0x000010)
+
+let camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,0.1,1000)
+let renderer=new THREE.WebGLRenderer({antialias:true})
+renderer.setSize(innerWidth,innerHeight)
+document.body.appendChild(renderer.domElement)
+
+let light=new THREE.DirectionalLight(0xffffff,1)
+light.position.set(10,20,10)
+scene.add(light)
+
+let amb=new THREE.AmbientLight(0x555555)
+scene.add(amb)
+
+// Player
+let playerGeo=new THREE.SphereGeometry(1,32,32)
+let playerMat=new THREE.MeshStandardMaterial({color:0x00ffff})
+let player=new THREE.Mesh(playerGeo,playerMat)
+player.position.y=5
+scene.add(player)
+
+let velocity=new THREE.Vector3()
+let hookPoint=null
+
+// City
+for(let i=0;i<40;i++){
+ let h=Math.random()*20+5
+ let geo=new THREE.BoxGeometry(5,h,5)
+ let mat=new THREE.MeshStandardMaterial({color:0x111111+Math.random()*0xffffff})
+ let b=new THREE.Mesh(geo,mat)
+ b.position.set((Math.random()-0.5)*80,h/2,(Math.random()-0.5)*80)
+ scene.add(b)
+}
+
+// Ground
+let g=new THREE.Mesh(
+ new THREE.PlaneGeometry(200,200),
+ new THREE.MeshStandardMaterial({color:0x020202})
+)
+g.rotation.x=-Math.PI/2
+scene.add(g)
+
+camera.position.set(0,8,15)
+
+function animate(){
+ requestAnimationFrame(animate)
+
+ velocity.y-=0.01
+ player.position.add(velocity)
+
+ if(player.position.y<1){
+  player.position.y=1
+  velocity.y=0
+ }
+
+ if(hookPoint){
+  let dir=new THREE.Vector3().subVectors(hookPoint,player.position)
+  dir.multiplyScalar(0.02)
+  velocity.add(dir)
+ }
+
+ camera.position.lerp(new THREE.Vector3(
+  player.position.x,
+  player.position.y+6,
+  player.position.z+12
+ ),0.1)
+ camera.lookAt(player.position)
+
+ renderer.render(scene,camera)
+}
+animate()
+
+// Touch joystick
+let joy=document.getElementById("joystick")
+let stick=document.getElementById("stick")
+let move={x:0,y:0}
+
+joy.addEventListener("touchmove",e=>{
+ let r=joy.getBoundingClientRect()
+ let x=e.touches[0].clientX-r.left-50
+ let y=e.touches[0].clientY-r.top-50
+ x=Math.max(-40,Math.min(40,x))
+ y=Math.max(-40,Math.min(40,y))
+ stick.style.left=50+x-20+"px"
+ stick.style.top=50+y-20+"px"
+ move.x=x/40
+ move.y=y/40
+ velocity.x=move.x*0.2
+ velocity.z=move.y*0.2
+})
+
+joy.addEventListener("touchend",()=>{
+ stick.style.left="30px"
+ stick.style.top="30px"
+ move.x=move.y=0
+})
+
+// Hook
+document.getElementById("hookBtn").addEventListener("touchstart",()=>{
+ hookPoint=new THREE.Vector3(
+  player.position.x+(Math.random()-0.5)*20,
+  player.position.y+10,
+  player.position.z+(Math.random()-0.5)*20
+ )
+ setTimeout(()=>hookPoint=null,2000)
+})
+
+window.addEventListener("resize",()=>{
+ camera.aspect=innerWidth/innerHeight
+ camera.updateProjectionMatrix()
+ renderer.setSize(innerWidth,innerHeight)
+})
+</script>
+</body>
+</html>
